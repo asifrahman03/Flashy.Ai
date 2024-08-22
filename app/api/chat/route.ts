@@ -10,12 +10,21 @@ export async function POST(request: Request) {
     const text = formData.get('text') as string;
     const file = formData.get('file') as File;
 
+    console.log('Received request:', { text: !!text, file: !!file });
+
     if (!text && !file) {
       return NextResponse.json({ error: 'No text or file provided' }, { status: 400 });
     }
 
-    const content = text || await extractTextFromFile(file);
-    console.log('Content to generate flashcards from:', content);
+    let content;
+    if (file) {
+      console.log('Processing file:', file.name, file.type);
+      content = await extractTextFromFile(file);
+    } else {
+      content = text;
+    }
+
+    console.log('Content to generate flashcards from:', content.substring(0, 100) + '...');
 
     const flashcards = await generateFlashcards(content);
 
@@ -26,21 +35,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ flashcards });
   } catch (error) {
     console.error('Error in POST handler:', error);
-    return NextResponse.json({ error: 'Failed to generate flashcards' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to generate flashcards: ' + error.message }, { status: 500 });
   }
 }
 
 async function extractTextFromFile(file: File): Promise<string> {
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  return extractTextFromBuffer(buffer);
+  try {
+    console.log('Extracting text from file:', file.name, file.type);
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    return extractTextFromBuffer(buffer);
+  } catch (error) {
+    console.error('Error in extractTextFromFile:', error);
+    throw error;
+  }
 }
 
 async function extractTextFromBuffer(buffer: Buffer): Promise<string> {
   try {
     console.log('Extracting text from buffer...');
     const data = await officeParser.parseOfficeAsync(buffer);
-    console.log('Extraction successful:', data);
+    console.log('Extraction successful, data length:', data.length);
     return data;
   } catch (error) {
     console.error('Error extracting text from buffer:', error);

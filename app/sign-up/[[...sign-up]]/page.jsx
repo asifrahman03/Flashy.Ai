@@ -1,4 +1,4 @@
-import { SignedIn, SignedOut, SignUp, UserButton } from '@clerk/nextjs';
+import { SignedIn, SignedOut, SignUp} from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
 
 export default function SignUpPage() {

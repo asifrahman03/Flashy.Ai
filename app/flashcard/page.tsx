@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import styles from './FlashcardGenerator.module.css';
-import { UserButton, useUser } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
 import {db} from "../../firebase";
 import { writeBatch, doc, collection, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
