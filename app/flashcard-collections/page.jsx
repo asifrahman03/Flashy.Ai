@@ -63,7 +63,7 @@ const FlashCardCollection = () => {
                 
                 {flashcards.length === 0 ? (
                     <div className="text-center">
-                        <p className="text-lg md:text-xl text-gray-600 mb-6">You don't have any flashcard collections yet.</p>
+                        <p className="text-lg md:text-xl text-gray-600 mb-6">You don&apos;t have any flashcard collections yet.</p>
                         <Link 
                             href="/flashcard" 
                             className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 md:py-3 md:px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 inline-block"

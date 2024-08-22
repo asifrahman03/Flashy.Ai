@@ -1,6 +1,6 @@
 "use client";
 import getStripe from '../../utils/get-stripe';
-
+import { useUser, useAuth } from '@clerk/nextjs'; // Import useUser and useAuth from Clerk
 
 const PricingCard = ({ tier, price, features, onClick }) => (
   <div className="bg-white rounded-lg shadow-lg p-6 m-4 flex flex-col justify-between transition-transform duration-300 hover:scale-105">
@@ -25,26 +25,39 @@ const PricingCard = ({ tier, price, features, onClick }) => (
 );
 
 const Pricing = () => {
+  const { user } = useUser(); // Get the user object
+  const { getToken } = useAuth(); // Get the getToken function from useAuth
+
   const handleSubmit = async () => {
+    if (!user) {
+      console.error("User is not authenticated");
+      return; // Exit if the user is not authenticated
+    }
+
+    const token = await getToken(); // Retrieve the token
+
     const checkoutSession = await fetch('/api/checkout-session', {
       method: 'POST',
       headers: {
-        origin: "http://localhost:3000"
+        origin: "http://localhost:3000",
+        Authorization: `Bearer ${token}` // Include the token if required
       },
     });
 
     const checkoutSessionJSON = await checkoutSession.json();
+    console.log(checkoutSessionJSON);
 
-    if(checkoutSessionJSON.statusCode === 500){
-      console.error(checkoutSession.message);
+    if (!checkoutSessionJSON || checkoutSessionJSON.statusCode === 500) {
+      console.error(checkoutSessionJSON ? checkoutSessionJSON.message : "No response from server");
       return;
     }
+
     const stripe = await getStripe();
-    const {error} = await stripe.redirectToCheckout({
+    const { error } = await stripe.redirectToCheckout({
       sessionId: checkoutSessionJSON.id
     });
 
-    if(error){
+    if (error) {
       console.warn(error.message);
     }
   }
@@ -52,6 +65,11 @@ const Pricing = () => {
     <section id="pricing" className="py-20 px-4">
       <div className="max-w-6xl mx-auto">
         <h2 className="text-4xl font-bold text-center text-gray-800 mb-12">Choose Your Plan</h2>
+        {!user && (
+          <p className="text-red-500 text-center mb-4">
+            You must be logged in to access payment for the Pro tier.
+          </p>
+        )}
         <div className="flex flex-col md:flex-row justify-center items-stretch">
           <PricingCard
             tier="Basic"
