@@ -69,7 +69,7 @@ const FlashCardCollection = () => {
                         </p>
                         {isNearLimit && (
                             <p className="text-yellow-600 mt-2">
-                                You're approaching the free plan limit. Upgrade to Pro for unlimited collections!
+                                You&apos;re approaching the free plan limit. Upgrade to Pro for unlimited collections!
                             </p>
                         )}
                     </div>

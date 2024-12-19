@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import './MainSection.css';
 import Link from 'next/link';
 
@@ -6,10 +7,12 @@ const MainSection = () => (
     <div className="text-content max-w-3xl text-center">
       <h1 className="font-bold text-3xl md:text-4xl lg:text-5xl text-center leading-tight mb-8 left_portion">
         Ready to swipe right on knowledge? 
-        <img 
+        <Image 
           src="/assets/flash-card.png" 
           className="w-12 md:w-16 inline-block align-middle m-3 left_portion" 
           alt="Flash Card"
+          width={100}
+          height={100}
         />
       </h1>
       <p className="text-base md:text-lg text-gray-800 mb-8 left_portion">
