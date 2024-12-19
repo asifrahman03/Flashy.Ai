@@ -15,12 +15,12 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-      <html lang="en">
-        <ClerkProvider>
-          <body className={`${inter.className} min-h-screen flex flex-col`}>
-            {children}
-          </body>
-        </ClerkProvider>
-      </html>
+    <html lang="en">
+      <ClerkProvider>
+        <body className={`${inter.className} min-h-screen flex flex-col`}>
+          {children}
+        </body>
+      </ClerkProvider>
+    </html>
   );
 }

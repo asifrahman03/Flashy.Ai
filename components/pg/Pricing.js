@@ -24,6 +24,30 @@ const PricingCard = ({ tier, price, features, onClick }) => (
   </div>
 );
 
+// Ensure we're only passing serializable data
+const handleCheckoutSession = async (token) => {
+  try {
+    const response = await fetch('/api/checkout-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Checkout session creation failed');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Checkout error:', error);
+    throw error;
+  }
+};
+
 /**
  * Handles transaction of user buying Pro subscription
  * @returns Stripe window for payment
@@ -38,32 +62,16 @@ const Pricing = () => {
       return; // Exit if the user is not authenticated
     }
 
-    const token = await getToken(); // Retrieve the token
-
-    // Create a session of Stripe instance when the user is authenticated through the checkout session api route
-    const checkoutSession = await fetch('/api/checkout-session', {
-      method: 'POST',
-      headers: {
-        origin: "http://localhost:3000",
-        Authorization: `Bearer ${token}` 
-      },
-    });
-    // Get JSON of checkout session
-    const checkoutSessionJSON = await checkoutSession.json();
-    console.log(checkoutSessionJSON);
-
-    if (!checkoutSessionJSON || checkoutSessionJSON.statusCode === 500) {
-      console.error(checkoutSessionJSON ? checkoutSessionJSON.message : "No response from server");
-      return;
-    }
-    // Creating Stripe object 
-    const stripe = await getStripe();
-    const { error } = await stripe.redirectToCheckout({
-      sessionId: checkoutSessionJSON.id
-    });
-    // If something prevents successful transaction (Canceled payment)
-    if (error) {
-      console.warn(error.message);
+    try {
+      const token = await getToken();
+      const sessionData = await handleCheckoutSession(token);
+      
+      const stripe = await getStripe();
+      await stripe.redirectToCheckout({
+        sessionId: sessionData.id
+      });
+    } catch (error) {
+      console.error('Payment error:', error);
     }
   }
   return (

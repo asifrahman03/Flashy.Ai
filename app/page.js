@@ -3,8 +3,10 @@ import MainSection from '../components/pg/MainSection';
 import Footer from '../components/pg/Footer';
 import Banner from '../components/pg/Banner';
 import Pricing from '../components/pg/Pricing';
+import {headers} from 'next/headers';
 
-export default function Home() {
+export default async function Home() {
+  await headers();
   return (
     <div className="flex-grow bg-gradient-to-br from-blue-50 to-pink-50 relative">
       {/* <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none"></div> */}
