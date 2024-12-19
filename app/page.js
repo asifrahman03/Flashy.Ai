@@ -7,7 +7,7 @@ import Pricing from '../components/pg/Pricing';
 export default function Home() {
   return (
     <div className="flex-grow bg-gradient-to-br from-blue-50 to-pink-50 relative">
-      <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none"></div>
+      {/* <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none"></div> */}
       <div className="relative z-10 flex flex-col min-h-screen">
         <Navbar />
         <MainSection />

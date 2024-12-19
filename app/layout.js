@@ -5,6 +5,10 @@ import { ClerkProvider } from '@clerk/nextjs';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
+  icons: {
+    icon: '/assets/flash-card.png',
+    favicon: '/assets/flash-card.png'
+  },
   title: 'Flashy.AI',
   description: 'AI-Powered Flashcard Generator',
 };

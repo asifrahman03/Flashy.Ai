@@ -6,11 +6,17 @@ import {db} from "../../firebase";
 import { writeBatch, doc, collection, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import Appbar from "../../components/pg/Appbar";
+import { useFirebaseAuth } from '../../hooks/useFirebaseAuth';
 
 export default function FlashcardPage() {
-  const { isLoaded, isSignedIn, user } = useUser();
+  /**
+   * All useStates 
+   */
+  const { user } = useUser(); // Represents user so each display is unique
+  const isFirebaseAuthed = useFirebaseAuth();
   const [inputText, setInputText] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [flashcards, setFlashcards] = useState<{ front: string; back: string }[]>([]);
   const [currentCard, setCurrentCard] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -24,6 +30,11 @@ export default function FlashcardPage() {
   const closeModal = () => setShowModal(false);
 
   const handleSaveSet = () => {
+    if (!isFirebaseAuthed) {
+      setError('Authentication error. Please try again.');
+      return;
+    }
+
     if (name.trim()) {
       saveFlashcards();
       closeModal();
@@ -89,6 +100,7 @@ export default function FlashcardPage() {
     
     if (validTypes.includes(file.type)) {
       setFile(file);
+      setSelectedFileName(file.name);
       setInputText(''); // Clear text input when a file is selected
       setFlashcards([]); // Clear previous flashcards
       setShowFlashcard(false); // Hide flashcard display
@@ -96,6 +108,7 @@ export default function FlashcardPage() {
     } else {
       console.error('Invalid file type:', file.type);
       setError('Invalid file type. Please upload a PDF, DOC, DOCX, RTF, PPT, PPTX, JPEG, PNG, or TXT file.');
+      setSelectedFileName(null);
     }
   };
 
@@ -103,6 +116,7 @@ export default function FlashcardPage() {
     setInputText(e.target.value);
     if (e.target.value.trim()) {
       setFile(null); // Clear file when text is entered
+      setSelectedFileName(null); // Sets file name to null when using text
     }
   };
 
@@ -126,7 +140,9 @@ export default function FlashcardPage() {
     input.onchange = (e) => {
       const target = e.target as HTMLInputElement;
       if (target && target.files && target.files[0]) {
+        const selectedFile = target.files[0];
         handleFileChange(target.files[0]);
+        setSelectedFileName(selectedFile.name);
       }
     };
     input.click();
@@ -147,7 +163,7 @@ export default function FlashcardPage() {
   const closeFlashcard = () => setShowFlashcard(false);
 
   const saveFlashcards = async () => {
-    if(!name){
+    if (!name) {
       alert('Please enter a name for set of flashcards: ');
       return;
     }
@@ -156,18 +172,25 @@ export default function FlashcardPage() {
     const userDocRef = doc(collection(db, 'users'), user.id);
     const docSnap = await getDoc(userDocRef);
 
-    if(docSnap.exists()){
+    if (docSnap.exists()) {
       const collections = docSnap.data().flashcards || [];
-      if(collections.find((f) => f.name === name)){
+      const isPro = docSnap.data().isPro || false;
+
+      if (collections.find((f) => f.name === name)) {
         alert("Flashcard collection already exists with name");
         return;
       }
-      else{
-        collections.push({name});
-        batch.set(userDocRef, {flashcards: collections}, {merge: true});
+
+      // Check collection limit for free users
+      if (!isPro && collections.length >= 10) {
+        alert("Free users can only create up to 10 collections. Please upgrade to Pro for unlimited collections!");
+        return;
       }
-    }else{
-      batch.set(userDocRef, {flashcards: [{name}]});
+
+      collections.push({ name });
+      batch.set(userDocRef, { flashcards: collections }, { merge: true });
+    } else {
+      batch.set(userDocRef, { flashcards: [{ name }] });
     }
 
     const columnRef = collection(userDocRef, name);
@@ -177,7 +200,7 @@ export default function FlashcardPage() {
     });
 
     await batch.commit();
-    router.push('/flashcard');
+    router.push('/flashcard-collections');
   }
 
   return (
@@ -214,6 +237,13 @@ export default function FlashcardPage() {
             >
               Select from device
             </button>
+            {selectedFileName && (
+              <div className="mt-4 text-center">
+                <p className="text-purple-600">
+                  Selected file: {selectedFileName}
+                </p>
+              </div>
+            )}
             <p className="text-sm text-gray-500 mt-4">
               Up to 100 MB for PDF and up to 25 MB for DOC, DOCX, RTF, PPT, PPTX, JPEG, PNG, or TXT
             </p>

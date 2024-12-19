@@ -10,7 +10,6 @@ const Navbar = () => (
         <ul className="flex flex-wrap justify-center space-x-4 md:space-x-6 mb-4 md:mb-0">
           <li><Link href="/">Home</Link></li>
           <li><Link href="/#pricing">Product</Link></li>
-          <li><Link href="/contact">Contact</Link></li>
         </ul>
         <div className="flex space-x-4">
           <Link href="/sign-in" className="px-4 py-2 text-gray-600 hover:text-gray-900">Login</Link>
