@@ -69,28 +69,70 @@ async function extractTextFromFile(file: File): Promise<string> {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     
+    // List of supported MIME types
+    const supportedTypes = [
+      'text/plain',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/msword', // .doc
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
+      'application/vnd.ms-powerpoint', // .ppt
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel' // .xls
+    ];
+
+    if (!supportedTypes.includes(file.type)) {
+      throw new Error(`Unsupported file type: ${file.type}. Please upload a text, Word, PDF, PowerPoint, or Excel file.`);
+    }
+
     // Handle text files directly
     if (file.type === 'text/plain') {
-      return buffer.toString('utf-8');
+      const text = buffer.toString('utf-8').trim();
+      if (!text) {
+        throw new Error('Text file is empty');
+      }
+      return text;
     }
     
-    return await extractTextFromBuffer(buffer);
+    // Handle office documents and PDFs
+    const text = await extractTextFromBuffer(buffer);
+    if (!text || typeof text !== 'string' || !text.trim()) {
+      throw new Error('No text content could be extracted from the file');
+    }
+    
+    return text.trim();
   } catch (error) {
     console.error('Error extracting text from file:', error);
-    throw new Error(`Failed to process file: ${error.message}`);
+    const errorMessage = error.message || 'Unknown error occurred while processing file';
+    throw new Error(`Failed to process file: ${errorMessage}`);
   }
 }
 
 async function extractTextFromBuffer(buffer: Buffer): Promise<string> {
   try {
-    const data = await officeParser.parseOfficeAsync(buffer);
-    if (!data || typeof data !== 'string') {
-      throw new Error('Invalid text extraction result');
+    if (!buffer || buffer.length === 0) {
+      throw new Error('Invalid buffer provided');
     }
-    return data.trim();
+
+    const data = await officeParser.parseOfficeAsync(buffer);
+    
+    if (!data) {
+      throw new Error('No data extracted from file');
+    }
+    
+    if (typeof data !== 'string') {
+      throw new Error('Extracted content is not text');
+    }
+    
+    const trimmedData = data.trim();
+    if (!trimmedData) {
+      throw new Error('Extracted text is empty');
+    }
+    
+    return trimmedData;
   } catch (error) {
     console.error('Error extracting text from buffer:', error);
-    throw new Error('Failed to extract text from file');
+    throw new Error(error.message || 'Failed to extract text from file');
   }
 }
 
