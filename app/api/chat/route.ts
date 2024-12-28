@@ -97,13 +97,13 @@ async function extractTextFromBuffer(buffer: Buffer): Promise<string> {
 async function generateFlashcards(text: string): Promise<{ front: string; back: string }[]> {
   try {
     const prompt = `
-Create 10 flashcards from the following content. Format as JSON array of objects with 'front' and 'back' properties.
-Each flashcard should have a clear question on the front and a concise answer on the back.
-Make the flashcards specific and focused on key concepts.
+Generate 10 flashcards from the following content. Your response must be a valid JSON array of objects.
+Each object should have exactly two fields: "front" for the question and "back" for the answer.
+Do not include any other text or explanation in your response, only the JSON array.
 
-Content: ${text.substring(0, 4000)} // Limit content length to avoid token limits
+Content: ${text.substring(0, 4000)}
 
-Expected format:
+Example format:
 [
   {
     "front": "What is...",
@@ -115,7 +115,7 @@ Expected format:
       messages: [
         {
           role: 'system',
-          content: 'You are a flashcard generator. Respond only with properly formatted JSON.'
+          content: 'You are a flashcard generator that only outputs valid JSON arrays containing flashcard objects with "front" and "back" fields. Never include any other text in your response.'
         },
         {
           role: 'user',
@@ -123,7 +123,7 @@ Expected format:
         }
       ],
       model: 'llama3-8b-8192',
-      temperature: 0.7,
+      temperature: 0.5,
       max_tokens: 2000,
     });
 
@@ -132,13 +132,31 @@ Expected format:
       throw new Error('No content generated');
     }
 
-    // Parse JSON response
+    // Try to extract JSON if the response contains any extra text
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    const jsonStr = jsonMatch ? jsonMatch[0] : content;
+
     try {
-      const flashcards = JSON.parse(content);
+      const flashcards = JSON.parse(jsonStr);
       if (!Array.isArray(flashcards)) {
         throw new Error('Response is not an array');
       }
-      return flashcards;
+      
+      // Validate each flashcard
+      const validFlashcards = flashcards.filter(card => 
+        card && 
+        typeof card === 'object' &&
+        typeof card.front === 'string' &&
+        typeof card.back === 'string' &&
+        card.front.trim() &&
+        card.back.trim()
+      );
+
+      if (validFlashcards.length === 0) {
+        throw new Error('No valid flashcards in response');
+      }
+
+      return validFlashcards;
     } catch (parseError) {
       console.error('Failed to parse AI response:', content);
       throw new Error('Invalid flashcard format returned');
@@ -148,108 +166,3 @@ Expected format:
     throw error;
   }
 }
-// import { NextResponse } from 'next/server';
-// import Groq from 'groq-sdk';
-// import officeParser from 'officeparser';
-
-// const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
-// export async function POST(request: Request) {
-//   try {
-//     const formData = await request.formData();
-//     const text = formData.get('text') as string;
-//     const file = formData.get('file') as File;
-
-//     console.log('Received request:', { text: !!text, file: !!file });
-
-//     if (!text && !file) {
-//       return NextResponse.json({ error: 'No text or file provided' }, { status: 400 });
-//     }
-
-//     let content;
-//     if (file) {
-//       console.log('Processing file:', file.name, file.type);
-//       content = await extractTextFromFile(file);
-//     } else {
-//       content = text;
-//     }
-
-//     console.log('Content to generate flashcards from:', content.substring(0, 100) + '...');
-
-//     const flashcards = await generateFlashcards(content);
-
-//     if (flashcards.length === 0) {
-//       return NextResponse.json({ error: 'No flashcards were generated' }, { status: 404 });
-//     }
-
-//     return NextResponse.json({ flashcards });
-//   } catch (error) {
-//     console.error('Error in POST handler:', error);
-//     return NextResponse.json({ error: 'Failed to generate flashcards: ' + error.message }, { status: 500 });
-//   }
-// }
-
-// async function extractTextFromFile(file: File): Promise<string> {
-//   try {
-//     console.log('Extracting text from file:', file.name, file.type);
-//     const arrayBuffer = await file.arrayBuffer();
-//     const buffer = Buffer.from(arrayBuffer);
-//     return extractTextFromBuffer(buffer);
-//   } catch (error) {
-//     console.error('Error in extractTextFromFile:', error);
-//     throw error;
-//   }
-// }
-
-// async function extractTextFromBuffer(buffer: Buffer): Promise<string> {
-//   try {
-//     console.log('Extracting text from buffer...');
-//     const data = await officeParser.parseOfficeAsync(buffer);
-//     console.log('Extraction successful, data length:', data.length);
-//     return data;
-//   } catch (error) {
-//     console.error('Error extracting text from buffer:', error);
-//     throw new Error('Failed to extract text from file');
-//   }
-// }
-
-// async function generateFlashcards(text: string): Promise<{ front: string; back: string }[]> {
-//   try {
-//     console.log('Generating flashcards for text:', text);
-//     const response = await groq.chat.completions.create({
-//       messages: [
-//         {
-//           role: 'user',
-//           content: `Generate 10 flashcards about the following topic. Each flashcard should have a question on the front and an answer on the back. Format each flashcard as follows: "Question: [Question Text] Answer: [Answer Text]".\n\nTopic: ${text}`,
-//         },
-//       ],
-//       model: 'llama3-8b-8192',
-//     });
-
-//     console.log('AI Response:', response.choices[0]?.message?.content);
-
-//     const flashcards = response.choices.flatMap(choice => {
-//       const content = choice.message.content.trim();
-//       if (!content) return [];
-
-//       return content.split('\n').reduce((acc, line) => {
-//         const questionMatch = line.match(/^Question:\s*(.*)/);
-//         const answerMatch = line.match(/^Answer:\s*(.*)/);
-
-//         if (questionMatch) {
-//           acc.push({ front: questionMatch[1].trim(), back: '' });
-//         } else if (answerMatch && acc.length > 0) {
-//           acc[acc.length - 1].back = answerMatch[1].trim();
-//         }
-
-//         return acc;
-//       }, [] as { front: string; back: string }[]);
-//     });
-
-//     console.log('Generated flashcards:', flashcards);
-//     return flashcards;
-//   } catch (error) {
-//     console.error('Error generating flashcards:', error);
-//     throw error;
-//   }
-// }
