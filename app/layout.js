@@ -9,8 +9,7 @@ export const metadata = {
     icon: '/assets/flash-card.png',
     favicon: '/assets/flash-card.png'
   },
-  title: 'Flashy.AI',
-  description: 'AI-Powered Flashcard Generator',
+  title: 'Flashy.AI'
 };
 
 export default function RootLayout({ children }) {

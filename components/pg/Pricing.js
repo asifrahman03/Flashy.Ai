@@ -94,7 +94,7 @@ const Pricing = () => {
           />
           <PricingCard onClick={handleSubmit}
             tier="Pro"
-            price="$10/month"
+            price="$1/month"
             features={[
               "Unlimited flashcards",
               "Unlimited collections",

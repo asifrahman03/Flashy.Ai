@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import officeParser from 'officeparser';
+import { parseDocx } from 'docx-parser';
+import { PdfReader } from 'pdfreader';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -9,6 +11,23 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const text = formData.get('text') as string;
     const file = formData.get('file') as File;
+
+    // Add detailed logging
+    console.log('Vercel environment check:', {
+      nodeVersion: process.version,
+      platform: process.platform,
+      env: process.env.NODE_ENV,
+      tempDir: process.env.TEMP || process.env.TMP,
+    });
+
+    if (file) {
+      console.log('File details:', {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        lastModified: file.lastModified
+      });
+    }
 
     console.log('Received request:', { hasText: !!text, hasFile: !!file });
 
@@ -62,77 +81,97 @@ export async function POST(request: Request) {
 
 async function extractTextFromFile(file: File): Promise<string> {
   try {
-    if (!file.size) {
-      throw new Error('File is empty');
-    }
-
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    
-    // List of supported MIME types
-    const supportedTypes = [
-      'text/plain',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-      'application/msword', // .doc
-      'application/pdf',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
-      'application/vnd.ms-powerpoint', // .ppt
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-      'application/vnd.ms-excel' // .xls
-    ];
 
-    if (!supportedTypes.includes(file.type)) {
-      throw new Error(`Unsupported file type: ${file.type}. Please upload a text, Word, PDF, PowerPoint, or Excel file.`);
+    switch (file.type) {
+      case 'application/pdf':
+        return await extractPdfText(buffer);
+      
+      case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        return await extractDocxText(buffer);
+      
+      case 'text/plain':
+        return buffer.toString('utf-8').trim();
+      
+      default:
+        // Fallback to officeparser
+        return await extractTextFromBuffer(buffer);
     }
-
-    // Handle text files directly
-    if (file.type === 'text/plain') {
-      const text = buffer.toString('utf-8').trim();
-      if (!text) {
-        throw new Error('Text file is empty');
-      }
-      return text;
-    }
-    
-    // Handle office documents and PDFs
-    const text = await extractTextFromBuffer(buffer);
-    if (!text || typeof text !== 'string' || !text.trim()) {
-      throw new Error('No text content could be extracted from the file');
-    }
-    
-    return text.trim();
   } catch (error) {
-    console.error('Error extracting text from file:', error);
-    const errorMessage = error.message || 'Unknown error occurred while processing file';
-    throw new Error(`Failed to process file: ${errorMessage}`);
+    console.error('File processing error:', {
+      fileType: file.type,
+      fileName: file.name,
+      error: error.message
+    });
+    throw error;
+  }
+}
+
+async function extractPdfText(buffer: Buffer): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let text = '';
+    new PdfReader().parseBuffer(buffer, (err, item) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      
+      // Check if we've reached the end of the PDF
+      if (!item) {
+        resolve(text.trim());
+        return;
+      }
+
+      // Only concatenate if item exists and has text property
+      if (item && typeof item.text === 'string') {
+        text += item.text + ' ';
+      }
+    });
+  });
+}
+
+async function extractDocxText(buffer: Buffer): Promise<string> {
+  try {
+    const result = await parseDocx(buffer);
+    return result.text;
+  } catch (error) {
+    console.error('DOCX parsing error:', error);
+    throw error;
   }
 }
 
 async function extractTextFromBuffer(buffer: Buffer): Promise<string> {
   try {
-    if (!buffer || buffer.length === 0) {
-      throw new Error('Invalid buffer provided');
-    }
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('File processing timed out')), 10000);
+    });
 
-    const data = await officeParser.parseOfficeAsync(buffer);
+    const parsePromise = officeParser.parseOfficeAsync(buffer);
+    
+    const data = await Promise.race([parsePromise, timeoutPromise]);
     
     if (!data) {
       throw new Error('No data extracted from file');
     }
-    
-    if (typeof data !== 'string') {
-      throw new Error('Extracted content is not text');
+
+    // Handle different response types
+    if (typeof data === 'string') {
+      return data.trim();
+    } else if (typeof data === 'object') {
+      // Some parsers might return an object with text content
+      return JSON.stringify(data);
     }
-    
-    const trimmedData = data.trim();
-    if (!trimmedData) {
-      throw new Error('Extracted text is empty');
-    }
-    
-    return trimmedData;
+
+    throw new Error('Unexpected data format from parser');
   } catch (error) {
-    console.error('Error extracting text from buffer:', error);
-    throw new Error(error.message || 'Failed to extract text from file');
+    console.error('Buffer processing error:', {
+      error: error.message,
+      stack: error.stack,
+      bufferSize: buffer.length
+    });
+    throw error;
   }
 }
 
