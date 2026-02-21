@@ -1,7 +1,6 @@
 "use client";
-import Link from "next/link";
 import getStripe from '../../utils/get-stripe';
-
+import { useUser, useAuth } from '@clerk/nextjs'; // Import useUser and useAuth from Clerk
 
 const PricingCard = ({ tier, price, features, onClick }) => (
   <div className="bg-white rounded-lg shadow-lg p-6 m-4 flex flex-col justify-between transition-transform duration-300 hover:scale-105">
@@ -25,47 +24,77 @@ const PricingCard = ({ tier, price, features, onClick }) => (
   </div>
 );
 
-const Pricing = () => {
-  const handleSubmit = async () => {
-    const checkoutSession = await fetch('/api/checkout-session', {
+// Ensure we're only passing serializable data
+const handleCheckoutSession = async (token) => {
+  try {
+    const response = await fetch('/api/checkout-session', {
       method: 'POST',
       headers: {
-        origin: "http://localhost:3000"
-      },
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      }
     });
 
-    const checkoutSessionJSON = await checkoutSession.json();
-
-    if(checkoutSessionJSON.statusCode === 500){
-      console.error(checkoutSession.message);
-      return;
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Checkout session creation failed');
     }
-    const stripe = await getStripe();
-    const {error} = await stripe.redirectToCheckout({
-      sessionId: checkoutSessionJSON.id
-    });
+    
+    return data;
+  } catch (error) {
+    console.error('Checkout error:', error);
+    throw error;
+  }
+};
 
-    if(error){
-      console.warn(error.message);
+/**
+ * Handles transaction of user buying Pro subscription
+ * @returns Stripe window for payment
+ */
+const Pricing = () => {
+  const { user } = useUser(); // Get the user object
+  const { getToken } = useAuth(); // Get the getToken function from useAuth
+
+  const handleSubmit = async () => {
+    if (!user) {
+      console.error("User is not authenticated");
+      return; // Exit if the user is not authenticated
+    }
+
+    try {
+      const token = await getToken();
+      const sessionData = await handleCheckoutSession(token);
+      
+      const stripe = await getStripe();
+      await stripe.redirectToCheckout({
+        sessionId: sessionData.id
+      });
+    } catch (error) {
+      console.error('Payment error:', error);
     }
   }
   return (
     <section id="pricing" className="py-20 px-4">
       <div className="max-w-6xl mx-auto">
         <h2 className="text-4xl font-bold text-center text-gray-800 mb-12">Choose Your Plan</h2>
+        {!user && (
+          <p className="text-red-500 text-center mb-4">
+            You must be logged in to access payment for the Pro tier.
+          </p>
+        )}
         <div className="flex flex-col md:flex-row justify-center items-stretch">
           <PricingCard
             tier="Basic"
             price="Free"
             features={[
-              "Create 10 flashcards",
               "Save 10 collections",
               "Basic features"
             ]}
           />
           <PricingCard onClick={handleSubmit}
             tier="Pro"
-            price="$10/month"
+            price="$1/month"
             features={[
               "Unlimited flashcards",
               "Unlimited collections",

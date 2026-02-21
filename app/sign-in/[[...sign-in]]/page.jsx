@@ -1,11 +1,14 @@
-import { SignedIn, SignedOut, SignIn, UserButton } from '@clerk/nextjs';
-import { redirect } from 'next/navigation';
+"use client";
+import { SignedIn, SignedOut, SignIn } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 
 export default function SignInPage() {
   return (
     <>
       <SignedIn>
-        {redirect('/flashcard')}
+        <div className="flex items-center justify-center w-full h-screen">
+          <p>Redirecting...</p>
+        </div>
       </SignedIn>
       <SignedOut>
         <div className="flex items-center justify-center w-full h-screen">

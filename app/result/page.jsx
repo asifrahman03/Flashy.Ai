@@ -2,7 +2,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { CircularProgress, Alert, AlertTitle, Grid, Typography, Button } from "@mui/material";
+import { CircularProgress, Alert, AlertTitle, Grid, Button } from "@mui/material";
+import { db } from '../../firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 const ResultPage = () => {
     const router = useRouter();
@@ -60,6 +62,17 @@ const ResultPage = () => {
     }
 
     if (session.payment_status === 'paid') {
+        // Update user's subscription status in Firestore
+        const updateSubscription = async () => {
+            const userDocRef = doc(db, 'users', user.id);
+            await updateDoc(userDocRef, {
+                isPro: true,
+                subscriptionDate: new Date().toISOString()
+            });
+        };
+        
+        updateSubscription().catch(console.error);
+
         return (
             <Grid container direction="column" alignItems="center" justifyContent="center" style={{ height: '100vh' }}>
                 <Grid item>

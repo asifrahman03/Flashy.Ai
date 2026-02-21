@@ -5,18 +5,21 @@ import { ClerkProvider } from '@clerk/nextjs';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'FlashAI',
-  description: 'AI-Powered Flashcard Generator',
+  icons: {
+    icon: '/assets/flash-card.png',
+    favicon: '/assets/flash-card.png'
+  },
+  title: 'Flashy.AI'
 };
 
 export default function RootLayout({ children }) {
   return (
-      <html lang="en">
-        <ClerkProvider>
-          <body className={`${inter.className} min-h-screen flex flex-col`}>
-            {children}
-          </body>
-        </ClerkProvider>
-      </html>
+    <html lang="en">
+      <ClerkProvider>
+        <body className={`${inter.className} min-h-screen flex flex-col`}>
+          {children}
+        </body>
+      </ClerkProvider>
+    </html>
   );
 }

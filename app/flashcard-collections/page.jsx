@@ -10,6 +10,7 @@ import Appbar from "../../components/pg/Appbar";
 const FlashCardCollection = () => {
     const { isLoaded, isSignedIn, user } = useUser();
     const [flashcards, setFlashcards] = useState([]);
+    const [isPro, setIsPro] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -22,6 +23,7 @@ const FlashCardCollection = () => {
             if (userDocSnap.exists()) {
                 const userData = userDocSnap.data();
                 const flashcardsData = userData.flashcards || [];
+                setIsPro(userData.isPro || false);
                 
                 // Fetch the actual flashcard data for each collection
                 const flashcardsWithData = await Promise.all(flashcardsData.map(async (fc) => {
@@ -46,12 +48,11 @@ const FlashCardCollection = () => {
         return <div>Loading...</div>;
     }
 
-    // const handleCardClick = (name) => {
-    //     router.push(`/flashcard-set?name=${name}`);
-    // }
     const handleCardClick = (name) => {
         router.push(`/flashcard-set?name=${encodeURIComponent(name)}`);
     }
+
+    const isNearLimit = !isPro && flashcards.length >= 8; // Warning when near limit
 
     return (
         <Appbar>
@@ -61,9 +62,22 @@ const FlashCardCollection = () => {
                     Your <span className="text-purple-600">F</span>lashcard Collections
                 </h1>
                 
+                {!isPro && (
+                    <div className="text-center mb-6">
+                        <p className="text-gray-600">
+                            {flashcards.length}/10 Collections Used
+                        </p>
+                        {isNearLimit && (
+                            <p className="text-yellow-600 mt-2">
+                                You&apos;re approaching the free plan limit. Upgrade to Pro for unlimited collections!
+                            </p>
+                        )}
+                    </div>
+                )}
+
                 {flashcards.length === 0 ? (
                     <div className="text-center">
-                        <p className="text-lg md:text-xl text-gray-600 mb-6">You don't have any flashcard collections yet.</p>
+                        <p className="text-lg md:text-xl text-gray-600 mb-6">You don&apos;t have any flashcard collections yet.</p>
                         <Link 
                             href="/flashcard" 
                             className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 md:py-3 md:px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 inline-block"
